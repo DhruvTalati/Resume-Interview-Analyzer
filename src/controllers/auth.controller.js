@@ -65,7 +65,7 @@ async function registerUserController(req, res) {
 async function loginUserController(req, res) {
   const { email, password } = req.body;
 
-  const user = userMOdel.findOne({ email });
+  const user = await userModel.findOne({ email });
 
   if (!user) {
     return res.status(400).json({
@@ -73,7 +73,7 @@ async function loginUserController(req, res) {
     });
   }
 
-  const isPasswordValid = bcrypt.compare(password, user.password);
+  const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
     return res.status(400).json({
