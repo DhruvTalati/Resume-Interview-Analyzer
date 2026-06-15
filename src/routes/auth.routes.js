@@ -30,6 +30,10 @@ authRouter.get("/logout", authController.logoutUserController);
  * @description Get the current logged in details
  * @access private
  */
-authRouter.get("/get-me", authMiddleware.authUser);
+authRouter.get(
+  "/get-me",
+  authMiddleware.authUser,
+  authController.getMeController,
+);
 
 module.exports = authRouter;
