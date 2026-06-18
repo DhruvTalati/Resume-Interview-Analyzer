@@ -85,7 +85,7 @@ const interviewReportSchema = new mongoose.Schema({
   skillsGaps = [skillsGapsSchema],
   preparationPlan = [preparationPlanSchema]
 } ,{
-    timestamps
+    timestamps :true
 });
 
 
