@@ -96,6 +96,11 @@ const interviewReportSchema = z.object({
     .describe(
       "A day-wise preparation plan for the candidate to follow in or to crack the interview!",
     ),
+  title: z
+    .string()
+    .describe(
+      "The title of the job for whcih the interview report is generated",
+    ),
 });
 
 async function generateInterviewReport({
