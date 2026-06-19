@@ -1,9 +1,7 @@
 const { GoogleGenAI } = require("@google/genai");
-const dotenv = require("dotenv");
 const { z } = require("zod");
 const { zodToJsonSchema } = require("zod-to-json-schema");
-
-dotenv.config();
+const puppeteer = require("puppeteer");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GENAI_API_KEY,
@@ -13,93 +11,85 @@ const interviewReportSchema = z.object({
   matchScore: z
     .number()
     .describe(
-      "A score between 0 and 100 indicating how well the candidate's profile matches the description",
+      "A score between 0 and 100 indicating how well the candidate's profile matches the job describe",
     ),
-
   technicalQuestions: z
     .array(
       z.object({
         question: z
           .string()
-          .describe("The technical question can be asked in the interview!"),
+          .describe("The technical question can be asked in the interview"),
         intention: z
           .string()
-          .describe(
-            "The intention of interviewer behind asking the question!!",
-          ),
+          .describe("The intention of interviewer behind asking this question"),
         answer: z
           .string()
           .describe(
-            "How to answer this  question, what points to cover, what approach to take etc.",
+            "How to answer this question, what points to cover, what approach to take etc.",
           ),
       }),
     )
     .describe(
-      "Technical questions that can be asked inn the interview along with their intention to ask that question",
+      "Technical questions that can be asked in the interview along with their intention and how to answer them",
     ),
-
   behavioralQuestions: z
     .array(
       z.object({
         question: z
           .string()
-          .describe("The behavioral question can be asked in the interview!"),
+          .describe("The technical question can be asked in the interview"),
         intention: z
           .string()
-          .describe(
-            "The intention of interviewer behind asking the question!!",
-          ),
+          .describe("The intention of interviewer behind asking this question"),
         answer: z
           .string()
           .describe(
-            "How to answer this  question, what points to cover, what approach to take etc.",
+            "How to answer this question, what points to cover, what approach to take etc.",
           ),
       }),
     )
     .describe(
-      "Behavioral questions that can be asked in the interview along with their intention to ask that question .",
+      "Behavioral questions that can be asked in the interview along with their intention and how to answer them",
     ),
-
-  skillsGaps: z
+  skillGaps: z
     .array(
       z.object({
-        skill: z
-          .string()
-          .describe("The skill in which the candidate is lacking!!"),
+        skill: z.string().describe("The skill which the candidate is lacking"),
         severity: z
           .enum(["low", "medium", "high"])
-          .describe("The severity of this skill gap , i.e"),
+          .describe(
+            "The severity of this skill gap, i.e. how important is this skill for the job and how much it can impact the candidate's chances",
+          ),
       }),
     )
     .describe(
-      "List of the skilled gaps in the candidate's profile along with their severity",
+      "List of skill gaps in the candidate's profile along with their severity",
     ),
-
   preparationPlan: z
     .array(
       z.object({
         day: z
           .number()
-          .describe(
-            "The day number in the preparation plan , starting from day 1",
-          ),
+          .describe("The day number in the preparation plan, starting from 1"),
         focus: z
           .string()
           .describe(
-            "The main focus of this day in the preparation plan, e.g. data structures, system design ,mock interviews effectively.",
+            "The main focus of this day in the preparation plan, e.g. data structures, system design, mock interviews etc.",
           ),
         tasks: z
           .array(z.string())
-          .describe("List of tasks to be done on this day!"),
+          .describe(
+            "List of tasks to be done on this day to follow the preparation plan, e.g. read a specific book or article, solve a set of problems, watch a video etc.",
+          ),
       }),
     )
     .describe(
-      "A day-wise preparation plan for the candidate to follow in or to crack the interview!",
+      "A day-wise preparation plan for the candidate to follow in order to prepare for the interview effectively",
     ),
   title: z
     .string()
     .describe(
-      "The title of the job for whcih the interview report is generated",
+      "The title of the job for which the interview report is generated",
     ),
 });
 
@@ -108,159 +98,80 @@ async function generateInterviewReport({
   selfDescription,
   jobDescription,
 }) {
-  // TEMPORARY MOCK DATA
-  return {
-    matchScore: 88,
-
-    technicalQuestions: [
-      {
-        question: "What is JWT Authentication?",
-        intention: "Check authentication knowledge",
-        answer:
-          "Explain token generation, signing, verification and middleware.",
-      },
-      {
-        question: "What is React Virtual DOM?",
-        intention: "Check React fundamentals",
-        answer: "Explain how React updates the UI efficiently.",
-      },
-      {
-        question: "Difference between SQL and MongoDB?",
-        intention: "Check database knowledge",
-        answer: "Compare relational and NoSQL databases.",
-      },
-      {
-        question: "What are Express middlewares?",
-        intention: "Check backend knowledge",
-        answer: "Explain request-response lifecycle processing.",
-      },
-      {
-        question: "What are REST APIs?",
-        intention: "Check API design knowledge",
-        answer: "Explain resources, HTTP methods and statelessness.",
-      },
-    ],
-
-    behavioralQuestions: [
-      {
-        question: "Tell me about yourself.",
-        intention: "Communication skills",
-        answer: "Discuss education, projects and goals.",
-      },
-      {
-        question: "Describe a challenge you faced.",
-        intention: "Problem solving",
-        answer: "Use STAR format.",
-      },
-      {
-        question: "Why should we hire you?",
-        intention: "Confidence and fit",
-        answer: "Highlight skills and projects.",
-      },
-      {
-        question: "How do you handle deadlines?",
-        intention: "Time management",
-        answer: "Discuss planning and prioritization.",
-      },
-      {
-        question: "Have you worked in a team?",
-        intention: "Teamwork assessment",
-        answer: "Explain collaboration experience.",
-      },
-    ],
-
-    skillsGaps: [
-      {
-        skill: "AWS",
-        severity: "medium",
-      },
-      {
-        skill: "Docker",
-        severity: "medium",
-      },
-      {
-        skill: "TypeScript",
-        severity: "low",
-      },
-    ],
-
-    preparationPlan: [
-      {
-        day: 1,
-        focus: "React",
-        tasks: ["Revise Hooks", "Practice Components"],
-      },
-      {
-        day: 2,
-        focus: "Node.js",
-        tasks: ["Build APIs", "Middleware Practice"],
-      },
-      {
-        day: 3,
-        focus: "MongoDB",
-        tasks: ["Aggregation", "Indexes"],
-      },
-      {
-        day: 4,
-        focus: "JWT",
-        tasks: ["Authentication", "Authorization"],
-      },
-      {
-        day: 5,
-        focus: "DSA",
-        tasks: ["Arrays", "Strings"],
-      },
-      {
-        day: 6,
-        focus: "Mock Interview",
-        tasks: ["Technical Questions", "Behavioral Questions"],
-      },
-      {
-        day: 7,
-        focus: "Revision",
-        tasks: ["Review Notes", "Project Explanation"],
-      },
-    ],
-  };
-
-  const prompt = `
-You are an expert technical recruiter.
-
-Analyze the candidate's resume, self description and job description.
-
-IMPORTANT:
-- Return ONLY valid JSON.
-- Follow the provided schema exactly.
-- matchScore must be between 0 and 100.
-- Generate exactly 5 technicalQuestions.
-- Generate exactly 5 behavioralQuestions.
-- Generate at least 3 skillsGaps.
-- Generate a 7-day preparationPlan.
-
-Resume:
-${resume}
-
-Self Description:
-${selfDescription}
-
-Job Description:
-${jobDescription}
+  const prompt = `Generate an interview report for a candidate with the following details:
+                        Resume: ${resume}
+                        Self Description: ${selfDescription}
+                        Job Description: ${jobDescription}
 `;
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: zodToJsonSchema(interviewReportSchema),
-      },
-    });
 
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error("FULL GEMINI ERROR:", error);
-    throw error;
-  }
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: zodToJsonSchema(interviewReportSchema),
+    },
+  });
+
+  return JSON.parse(response.text);
 }
 
-module.exports = generateInterviewReport;
+async function generatePdfFromHtml(htmlContent) {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    margin: {
+      top: "20mm",
+      bottom: "20mm",
+      left: "15mm",
+      right: "15mm",
+    },
+  });
+
+  await browser.close();
+
+  return pdfBuffer;
+}
+
+async function generateResumePdf({ resume, selfDescription, jobDescription }) {
+  const resumePdfSchema = z.object({
+    html: z
+      .string()
+      .describe(
+        "The HTML content of the resume which can be converted to PDF using any library like puppeteer",
+      ),
+  });
+
+  const prompt = `Generate resume for a candidate with the following details:
+                        Resume: ${resume}
+                        Self Description: ${selfDescription}
+                        Job Description: ${jobDescription}
+
+                        the response should be a JSON object with a single field "html" which contains the HTML content of the resume which can be converted to PDF using any library like puppeteer.
+                        The resume should be tailored for the given job description and should highlight the candidate's strengths and relevant experience. The HTML content should be well-formatted and structured, making it easy to read and visually appealing.
+                        The content of resume should be not sound like it's generated by AI and should be as close as possible to a real human-written resume.
+                        you can highlight the content using some colors or different font styles but the overall design should be simple and professional.
+                        The content should be ATS friendly, i.e. it should be easily parsable by ATS systems without losing important information.
+                        The resume should not be so lengthy, it should ideally be 1-2 pages long when converted to PDF. Focus on quality rather than quantity and make sure to include all the relevant information that can increase the candidate's chances of getting an interview call for the given job description.
+                    `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: zodToJsonSchema(resumePdfSchema),
+    },
+  });
+
+  const jsonContent = JSON.parse(response.text);
+
+  const pdfBuffer = await generatePdfFromHtml(jsonContent.html);
+
+  return pdfBuffer;
+}
+
+module.exports = { generateInterviewReport, generateResumePdf };

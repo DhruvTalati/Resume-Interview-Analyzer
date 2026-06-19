@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import "../style/interview.scss";
 import { useInterview } from "../hooks/useInterview.js";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 const NAV_ITEMS = [
   {
@@ -137,7 +137,7 @@ const Interview = () => {
     if (interviewId) {
       getReportById(interviewId);
     }
-  }, [getReportById, interviewId]);
+  }, [interviewId]);
 
   if (loading || !report) {
     return (
