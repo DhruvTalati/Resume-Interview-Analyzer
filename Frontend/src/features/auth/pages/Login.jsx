@@ -10,10 +10,34 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const handleDemoLogin = async () => {
+    const demoEmail = "demo@resumeanalyzer.com";
+    const demoPassword = "Demo@123";
+
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+
+    try {
+      await handleLogin({
+        email: demoEmail,
+        password: demoPassword,
+      });
+
+      navigate("/");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await handleLogin({ email, password });
-    navigate("/");
+
+    try {
+      await handleLogin({ email, password });
+      navigate("/");
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   if (loading) {
@@ -31,8 +55,24 @@ const Login = () => {
     <main>
       <div className="form-container">
         <div className="form-header">
-          <h1>Resume Checker</h1>
-          <p>Login to analyze and improve your resume</p>
+          <div className="demo-box">
+            <h3> Demo Account</h3>
+
+            <p>
+              <strong>Email:</strong>
+              <span className="credential"> demo@resumeanalyzer.com</span>
+            </p>
+
+            <p>
+              <strong>Password:</strong>
+              <span className="credential"> Demo@123</span>
+            </p>
+          </div>
+          <h1>Resume Interview Analyzer</h1>
+          <p>
+            AI-powered resume analysis, interview preparation, and ATS resume
+            generation.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -66,6 +106,14 @@ const Login = () => {
             disabled={loading}
           >
             {loading ? "Logging In..." : "Login"}
+          </button>
+
+          <button
+            type="button"
+            className="button secondary-button"
+            onClick={handleDemoLogin}
+          >
+            Try Demo Account
           </button>
         </form>
 

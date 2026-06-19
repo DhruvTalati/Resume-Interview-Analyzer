@@ -14,24 +14,43 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await handleRegister({ username, email, password });
-    navigate("/");
+    try {
+      await handleRegister({
+        username,
+        email,
+        password,
+      });
 
-    if (loading) {
-      return (
-        <main>
-          <h1>Loading......</h1>
-        </main>
-      );
+      navigate("/");
+    } catch (error) {
+      console.error(error);
     }
   };
+  if (loading) {
+    return (
+      <main>
+        <h1>Loading......</h1>
+      </main>
+    );
+  }
 
   return (
     <main>
       <div className="form-container">
         <div className="form-header">
-          <h1>Create Account</h1>
-          <p>Start improving your resume today</p>
+          <h1>Join Resume Interview Analyzer</h1>
+
+          <p>
+            Create your account and generate AI-powered interview reports,
+            skill-gap analysis, and ATS-friendly resumes.
+          </p>
+        </div>
+
+        <div className="features-box">
+          <p>✅ Resume Analysis</p>
+          <p>✅ Interview Questions</p>
+          <p>✅ Skill Gap Detection</p>
+          <p>✅ ATS Resume Generation</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -69,6 +88,9 @@ const Register = () => {
               name="password"
               placeholder="Create a password"
             />
+            <small className="password-hint">
+              Minimum 8 characters recommended
+            </small>
           </div>
 
           <button type="submit" className="button primary-button">
