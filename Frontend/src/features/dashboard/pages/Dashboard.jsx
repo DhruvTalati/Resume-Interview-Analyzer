@@ -7,11 +7,12 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import api from "../../../api/axios";
 import { useEffect } from "react";
 import { useInterview } from "../../interview/hooks/useinterview";
 import { useNavigate } from "react-router";
 
-import "./dashboard.scss";
+import "../styles/dashboard.scss";
 
 const Dashboard = () => {
   const { reports, getReports, loading } = useInterview();
@@ -55,6 +56,17 @@ const Dashboard = () => {
       </div>
     );
   }
+  const handleLogout = async () => {
+    try {
+      await api.post("/api/auth/logout");
+
+      localStorage.clear();
+
+      navigate("/login");
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   return (
     <div className="dashboard-layout">
@@ -67,9 +79,10 @@ const Dashboard = () => {
             📊 Dashboard
           </button>
           <button onClick={() => navigate("/")}>📄 Generate Report</button>
-          <button>📑 ATS Resume</button>
-          <button>👤 Profile</button>
-          <button>🚪 Logout</button>
+          <button onClick={() => navigate("/reports")}>📄 Reports</button>
+          <button onClick={() => navigate("/ats-resume")}>📑 ATS Resume</button>
+          <button onClick={() => navigate("/profile")}>👤 Profile</button>
+          <button onClick={handleLogout}>🚪 Logout</button>
         </nav>
         <div className="logo">ResumeAI</div>
         <div className="user-profile">
