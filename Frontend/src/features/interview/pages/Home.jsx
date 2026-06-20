@@ -218,6 +218,8 @@ const Home = () => {
             </svg>
             Generate My Interview Strategy
           </button>
+
+          <button onClick={() => navigate("/dashboard")}>View Dashboard</button>
         </div>
       </div>
 
