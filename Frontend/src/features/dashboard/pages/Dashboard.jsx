@@ -8,7 +8,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useEffect } from "react";
-import { useInterview } from "../../interview/hooks/useInterview";
+import { useInterview } from "../../interview/hooks/useinterview";
 import { useNavigate } from "react-router";
 
 import "./dashboard.scss";
