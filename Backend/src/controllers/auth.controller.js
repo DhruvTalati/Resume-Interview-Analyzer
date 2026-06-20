@@ -144,7 +144,7 @@ async function logoutUserController(req, res) {
 }
 
 /**
- * @name grtMeController
+ * @name getMeController
  * @description Get the current logged in user details!!
  * @access private
  */

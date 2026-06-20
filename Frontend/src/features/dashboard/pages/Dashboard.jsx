@@ -58,11 +58,9 @@ const Dashboard = () => {
   }
   const handleLogout = async () => {
     try {
-      await api.post("/api/auth/logout");
-
+      await api.get("/api/auth/logout");
       localStorage.clear();
-
-      navigate("/login");
+      navigate("/login", { replace: true });
     } catch (error) {
       console.log(error);
     }

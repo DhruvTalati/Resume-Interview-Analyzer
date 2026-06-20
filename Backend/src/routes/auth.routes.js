@@ -23,7 +23,7 @@ authRouter.post("/login", authController.loginUserController);
  * @description clear token from user cookie and add the token in the blacklist
  * @access Public
  */
-authRouter.post("/logout", authController.logoutUserController);
+authRouter.get("/logout", authController.logoutUserController);
 
 /**
  * @route GET /api/auth/get-me
