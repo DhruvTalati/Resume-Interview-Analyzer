@@ -330,6 +330,27 @@ $font-stack:
   }
 }
 
+.dashboard-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  background: #1e293b;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+  &:hover {
+    background: #334155;
+    transform: translateY(-2px);
+  }
+}
+
+.footer-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
 .recent-reports {
   display: flex;
   flex-direction: column;
