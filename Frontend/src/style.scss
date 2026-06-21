@@ -1,17 +1,19 @@
 @use "./style/button.scss";
-
+$primary: #27374d;
+$secondary: #526d82;
+$accent: #9db2bf;
+$text: #dde6ed;
 * {
-  margin: 0%;
-  padding: 0%;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
-
 html,
 body,
 #root {
   height: 100%;
   width: 100%;
-  background-color: #0000009f;
-  color: whitesmoke;
+  background-color: $primary;
+  color: $text;
   font-family: "Poppins", sans-serif;
 }

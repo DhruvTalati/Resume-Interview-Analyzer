@@ -1,17 +1,17 @@
 // ── Variables ────────────────────────────────────────────────────────────────
-$bg-page: #0d1117;
-$bg-card: #161b22;
-$bg-panel: #1c2230;
-$bg-input: #1e2535;
-$border-color: #2a3348;
-$text-primary: #e6edf3;
-$text-muted: #7d8590;
-$accent: #ff2d78;
-$accent-alt: #ff6b9d;
-$badge-required: #ff2d78;
-$badge-best: #ff2d78;
-$info-bg: #1b2a4a;
-$info-border: #2d4a7a;
+$bg-page: #27374d;
+$bg-card: #3e5368;
+$bg-panel: #526d82;
+$bg-input: #2f4357;
+$border-color: rgba(221, 230, 237, 0.15);
+$text-primary: #dde6ed;
+$text-muted: #9db2bf;
+$accent: #9db2bf;
+$accent-alt: #dde6ed;
+$badge-required: #ef4444;
+$badge-best: #22c55e;
+$info-bg: rgba(157, 178, 191, 0.15);
+$info-border: #9db2bf;
 $font-stack:
   system-ui,
   -apple-system,
@@ -31,8 +31,8 @@ $font-stack:
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 3rem 1.5rem;
+  justify-content: flex-start;
+  padding-top: 3rem;
   gap: 2rem;
 }
 
@@ -56,15 +56,16 @@ $font-stack:
   }
 
   .highlight {
-    color: $accent;
+    color: #dde6ed;
+    text-decoration: underline;
   }
 }
 
 // ── Main Card ─────────────────────────────────────────────────────────────────
 .interview-card {
   width: 100%;
-  max-width: 900px;
-  background-color: $bg-card;
+  max-width: 1200px;
+  background-color: #3e5368;
   border: 1px solid $border-color;
   border-radius: 1rem;
   overflow: hidden;
@@ -294,7 +295,7 @@ $font-stack:
   p {
     margin: 0;
     font-size: 0.8rem;
-    color: #8ab4f8;
+    color: #dde6ed;
     line-height: 1.5;
 
     strong {
@@ -309,7 +310,8 @@ $font-stack:
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, $accent 0%, darken($accent, 10%) 100%);
+  background: linear-gradient(135deg, #526d82, #27374d);
+  box-shadow: 0 8px 20px rgba(39, 55, 77, 0.4);
   color: #fff;
   font-size: 0.9rem;
   font-weight: 600;
@@ -334,13 +336,14 @@ $font-stack:
   padding: 12px 20px;
   border: none;
   border-radius: 12px;
-  background: #1e293b;
+  background: #9db2bf;
+  color: #27374d;
   color: white;
   font-weight: 600;
   cursor: pointer;
   transition: 0.3s ease;
   &:hover {
-    background: #334155;
+    background: #b6c4ce;
     transform: translateY(-2px);
   }
 }
@@ -356,7 +359,7 @@ $font-stack:
   flex-direction: column;
   gap: 0.75rem;
   width: 100%;
-  max-width: 900px;
+  max-width: 1200px;
 
   .reports-list {
     display: flex;
@@ -372,6 +375,7 @@ $font-stack:
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
+      transition: all 0.3s ease;
       cursor: pointer;
       flex-shrink: 0;
 
@@ -380,6 +384,10 @@ $font-stack:
         font-weight: 600;
         color: $accent;
         align-items: flex-start;
+      }
+      &:hover {
+        transform: translateY(-4px);
+        border-color: #dde6ed;
       }
     }
   }

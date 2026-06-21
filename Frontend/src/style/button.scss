@@ -8,17 +8,25 @@
   font-size: 1rem;
   font-weight: 600;
   transition: all 0.3s ease;
-
   &.primary-button {
-    background-color: aqua;
-    color: #0f172a;
-
+    background: #526d82;
+    color: #dde6ed;
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0, 255, 255, 0.3);
+      background: #607d94;
+      box-shadow: 0 8px 20px rgba(82, 109, 130, 0.4);
     }
   }
 
+  &.secondary-button {
+    background: #9db2bf;
+    color: #27374d;
+    &:hover {
+      transform: translateY(-2px);
+      background: #b4c4cf;
+      box-shadow: 0 8px 20px rgba(157, 178, 191, 0.35);
+    }
+  }
   &:active {
     transform: scale(0.95);
   }

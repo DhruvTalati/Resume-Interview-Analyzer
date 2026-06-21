@@ -35,10 +35,10 @@ const Register = () => {
   }
 
   return (
-    <main>
+    <main className="auth-page">
       <div className="form-container">
         <div className="form-header">
-          <h1>Join Resume Interview Analyzer</h1>
+          <h1>Job Resume Interview Analyzer</h1>
 
           <p>
             Create your account and generate AI-powered interview reports,
@@ -47,10 +47,10 @@ const Register = () => {
         </div>
 
         <div className="features-box">
-          <p>✅ Resume Analysis</p>
-          <p>✅ Interview Questions</p>
-          <p>✅ Skill Gap Detection</p>
-          <p>✅ ATS Resume Generation</p>
+          <p>📄 Resume Analysis</p>
+          <p>🎯 Interview Questions</p>
+          <p>🔍 Skill Gap Detection</p>
+          <p>🚀 ATS Resume Generation</p>
         </div>
 
         <form onSubmit={handleSubmit}>

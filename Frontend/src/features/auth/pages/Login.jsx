@@ -52,7 +52,7 @@ const Login = () => {
   }
 
   return (
-    <main>
+    <main className="auth-page">
       <div className="form-container">
         <div className="form-header">
           <div className="demo-box">
