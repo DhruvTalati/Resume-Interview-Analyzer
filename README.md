@@ -702,14 +702,10 @@ Implemented and solved:
 
 ## Dhruv Talati
 
-**B.Tech Information Technology Student**
-
-A.D. Patel Institute of Technology (ADIT)
-
 ### Connect
 
-* GitHub: https://github.com/yourusername
-* LinkedIn: https://linkedin.com/in/yourprofile
+* GitHub: https://github.com/DhruvTalati
+* LinkedIn: www.linkedin.com/in/dhruv-talati-1b0424287
 
 ### Technical Skills
 
