@@ -242,13 +242,19 @@ ${jobDescription}
     try {
       console.log("Calling Gemini API...");
       console.log(`Gemini Attempt ${i + 1}`);
-      response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
+      response = await Promise.race([
+        ai.models.generateContent({
+          model: "gemini-2.5-flash-lite",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: zodToJsonSchema(resumePdfSchema),
+          },
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Gemini timeout")), 60000),
+        ),
+      ]);
       console.log("Calling Gemini API...");
       console.log("Gemini Success");
 
@@ -551,13 +557,19 @@ ${jobDescription}
       try {
         console.log(`Gemini Attempt ${i + 1}`);
 
-        response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-          },
-        });
+        rresponse = await Promise.race([
+          ai.models.generateContent({
+            model: "gemini-2.5-flash-lite",
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: zodToJsonSchema(resumePdfSchema),
+            },
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Gemini timeout")), 60000),
+          ),
+        ]);
 
         console.log("Gemini Success");
 
