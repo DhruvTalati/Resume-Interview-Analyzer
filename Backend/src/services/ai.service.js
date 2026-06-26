@@ -238,13 +238,13 @@ ${jobDescription}
 
   let response;
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     try {
       console.log("Calling Gemini API...");
       console.log(`Gemini Attempt ${i + 1}`);
       response = await Promise.race([
         ai.models.generateContent({
-          model: "gemini-2.5-flash-lite",
+          model: "gemini-2.0-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json",
@@ -274,7 +274,7 @@ ${jobDescription}
         throw err;
       }
 
-      const delay = (i + 1) * 5000;
+      const delay = (i + 1) * 8000;
       console.log(`Gemini is busy. Retrying in ${delay / 1000} seconds...`);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
@@ -553,13 +553,13 @@ ${jobDescription}
   try {
     let response;
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       try {
         console.log(`Gemini Attempt ${i + 1}`);
 
         response = await Promise.race([
           ai.models.generateContent({
-            model: "gemini-2.5-flash-lite",
+            model: "gemini-2.0-flash",
             contents: prompt,
             config: {
               responseMimeType: "application/json",

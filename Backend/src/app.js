@@ -8,6 +8,11 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.originalUrl}`);
   next();
 });
+// Increase timeout for long-running AI requests
+app.use((req, res, next) => {
+  res.setTimeout(120000); // 2 minutes
+  next();
+});
 app.use(express.json());
 app.use(cookieParser());
 app.use(
