@@ -240,8 +240,8 @@ ${jobDescription}
 
   for (let i = 0; i < 3; i++) {
     try {
+      console.log("Calling Gemini API...");
       console.log(`Gemini Attempt ${i + 1}`);
-
       response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
@@ -249,7 +249,7 @@ ${jobDescription}
           responseMimeType: "application/json",
         },
       });
-
+      console.log("Calling Gemini API...");
       console.log("Gemini Success");
 
       break;
@@ -593,8 +593,10 @@ ${jobDescription}
     }
 
     const jsonContent = JSON.parse(response.text);
+    console.log("JSON parsed successfully.");
     console.log("RAW RESUME RESPONSE:");
     console.log(response.text);
+    console.log("Generating PDF...");
 
     const pdfBuffer = await generatePdfFromHtml(jsonContent.html);
 
