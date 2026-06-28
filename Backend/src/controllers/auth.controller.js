@@ -1,6 +1,6 @@
-const userModel           = require("../models/user.model");
-const jwt                 = require("jsonwebtoken");
-const bcrypt              = require("bcrypt");
+const userModel = require("../models/user.model");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 const tokenBlacklistModel = require("../models/blacklist.model");
 
 // ── Async error wrapper — eliminates try/catch in every handler ───────────────
@@ -11,22 +11,20 @@ const asyncHandler = (fn) => (req, res, next) =>
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure:   process.env.NODE_ENV === "production",
+  secure: process.env.NODE_ENV === "production",
   sameSite: "none",
-  maxAge:   24 * 60 * 60 * 1000, // 1 day
+  maxAge: 24 * 60 * 60 * 1000, // 1 day
 };
 
 const signToken = (user) =>
-  jwt.sign(
-    { id: user._id, username: user.username },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" },
-  );
+  jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
 
 const safeUser = (user) => ({
-  id:       user._id,
+  id: user._id,
   username: user.username,
-  email:    user.email,
+  email: user.email,
 });
 
 // ── Register ──────────────────────────────────────────────────────────────────
@@ -68,7 +66,8 @@ const registerUserController = asyncHandler(async (req, res) => {
     $or: [{ username: username.trim() }, { email: email.trim().toLowerCase() }],
   });
   if (existing) {
-    const field = existing.email === email.trim().toLowerCase() ? "email" : "username";
+    const field =
+      existing.email === email.trim().toLowerCase() ? "email" : "username";
     return res.status(409).json({
       success: false,
       message: `An account with this ${field} already exists.`,
@@ -79,7 +78,7 @@ const registerUserController = asyncHandler(async (req, res) => {
   const hash = await bcrypt.hash(password, 12);
   const user = await userModel.create({
     username: username.trim(),
-    email:    email.trim().toLowerCase(),
+    email: email.trim().toLowerCase(),
     password: hash,
   });
 
@@ -89,7 +88,7 @@ const registerUserController = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: "Account created successfully.",
-    user:    safeUser(user),
+    user: safeUser(user),
   });
 });
 
@@ -108,7 +107,11 @@ const loginUserController = asyncHandler(async (req, res) => {
     });
   }
 
-  const user = await userModel.findOne({ email: email.trim().toLowerCase() });
+  const user = await userModel
+    .findOne({
+      email: email.trim().toLowerCase(),
+    })
+    .select("+password");
 
   // Use the same generic message for both wrong email & wrong password
   // to prevent user enumeration attacks
@@ -129,7 +132,7 @@ const loginUserController = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Logged in successfully.",
-    user:    safeUser(user),
+    user: safeUser(user),
   });
 });
 
@@ -153,7 +156,7 @@ const logoutUserController = asyncHandler(async (req, res) => {
 
   res.clearCookie("token", {
     httpOnly: true,
-    secure:   process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production",
     sameSite: "none",
   });
 
@@ -181,7 +184,7 @@ const getMeController = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "User fetched successfully.",
-    user:    safeUser(user),
+    user: safeUser(user),
   });
 });
 
