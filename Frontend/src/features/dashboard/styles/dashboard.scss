@@ -37,7 +37,7 @@
     linear-gradient(135deg, #040b16 0%, #07111f 50%, #0c1727 100%);
   font-family: "Inter", sans-serif;
   color: var(--text);
-  overflow: hidden;
+  overflow: auto;
   position: relative;
 }
 
@@ -343,7 +343,7 @@
   transition: all 0.25s;
   cursor: default;
   position: relative;
-  overflow: hidden;
+  overflow: auto;
 
   &::before {
     content: "";
@@ -447,7 +447,7 @@
   border: 1px solid var(--db-border);
   border-radius: 22px;
   backdrop-filter: blur(20px);
-  overflow: hidden;
+  overflow: auto;
 
   &__head {
     display: flex;
@@ -555,7 +555,7 @@
     font-weight: 600;
     color: var(--text);
     white-space: nowrap;
-    overflow: hidden;
+    overflow: auto;
     text-overflow: ellipsis;
   }
 

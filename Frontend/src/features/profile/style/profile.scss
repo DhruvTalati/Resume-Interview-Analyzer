@@ -198,7 +198,7 @@
   padding: 2rem 1.75rem;
   backdrop-filter: blur(24px);
   position: relative;
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -399,7 +399,7 @@
     background: rgba(10, 18, 35, 0.7);
     border: 1px solid var(--db-border);
     border-radius: 22px;
-    overflow: hidden;
+    overflow: auto;
     backdrop-filter: blur(20px);
   }
 
@@ -446,7 +446,7 @@
     font-weight: 600;
     color: var(--text);
     white-space: nowrap;
-    overflow: hidden;
+    overflow: auto;
     text-overflow: ellipsis;
     display: block;
   }

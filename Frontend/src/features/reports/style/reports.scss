@@ -354,7 +354,7 @@
     color: var(--text);
     margin: 0 0 4px;
     white-space: nowrap;
-    overflow: hidden;
+    overflow: auto;
     text-overflow: ellipsis;
   }
 
@@ -374,7 +374,7 @@
     height: 5px;
     background: rgba(255, 255, 255, 0.06);
     border-radius: 999px;
-    overflow: hidden;
+    overflow: auto;
   }
 
   &__fill {

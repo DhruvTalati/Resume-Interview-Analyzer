@@ -13,7 +13,7 @@ html,
 body,
 #root {
   height: 100%;
-  overflow: hidden; /* prevents any accidental scroll at root level */
+  overflow: auto; /* prevents any accidental scroll at root level */
 }
 
 body {
@@ -40,7 +40,7 @@ body {
   position: relative;
   width: 100%;
   height: 100vh; /* ← hard lock to viewport height */
-  overflow: hidden; /* ← nothing escapes */
+  overflow: auto; /* ← nothing escapes */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -105,7 +105,7 @@ body {
   display: grid;
   grid-template-columns: 58% 42%;
   border-radius: 28px;
-  overflow: hidden; /* clips both columns cleanly */
+  overflow: auto; /* clips both columns cleanly */
   background: rgba(10, 16, 30, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(30px);
@@ -393,7 +393,7 @@ form {
   align-items: center;
   gap: 0.6rem;
   position: relative;
-  overflow: hidden;
+  overflow: auto;
   transition: 0.35s;
 
   &::before {
@@ -804,7 +804,7 @@ form {
   height: 6px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  overflow: hidden;
+  overflow: auto;
   margin-bottom: clamp(0.4rem, 0.7vh, 0.75rem);
 
   &:last-child {
