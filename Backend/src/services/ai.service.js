@@ -7,7 +7,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
 
 // ── Model fallback chain ──────────────────────────────────────────────────────
 // If a model hits quota or overload, the next one is tried automatically
-const MODELS = ["gemini-2.0-flash", "gemini-1.5-flash-8b", "gemini-1.5-flash"];
+const MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 const interviewReportSchema = z.object({
