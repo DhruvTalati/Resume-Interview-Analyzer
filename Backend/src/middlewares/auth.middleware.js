@@ -1,32 +1,46 @@
 const jwt = require("jsonwebtoken");
 const tokenBlacklistModel = require("../models/blacklist.model");
 
+/**
+ * @name    authUser
+ * @desc    Verifies JWT cookie, checks blacklist, attaches req.user
+ * @access  Used on all protected routes
+ */
 async function authUser(req, res, next) {
-  console.log("COOKIES =>", req.cookies);
-  const token = req.cookies.token;
+  const token = req.cookies?.token;
 
   if (!token) {
     return res.status(401).json({
-      message: "Token not provided!!",
+      success: false,
+      message: "Authentication required. Please log in.",
     });
   }
 
-  const isTokenBlacklisted = await tokenBlacklistModel.findOne({ token });
-
-  if (isTokenBlacklisted) {
+  // Check blacklist first — avoid decoding a known-invalid token
+  const isBlacklisted = await tokenBlacklistModel.findOne({ token });
+  if (isBlacklisted) {
     return res.status(401).json({
-      message: "Token is invalid!!",
+      success: false,
+      message: "Session expired. Please log in again.",
     });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
-
     next();
-  } catch (error) {
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Your session has expired. Please log in again.",
+        code: "TOKEN_EXPIRED",
+      });
+    }
     return res.status(401).json({
-      message: "Invalid token!!",
+      success: false,
+      message: "Invalid authentication token.",
+      code: "TOKEN_INVALID",
     });
   }
 }

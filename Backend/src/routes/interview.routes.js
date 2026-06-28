@@ -1,63 +1,65 @@
 const express = require("express");
-const authMiddleware = require("../middlewares/auth.middleware");
+const { authUser } = require("../middlewares/auth.middleware");
+const { upload, handleMulterError } = require("../middlewares/file.middleware");
 const interviewController = require("../controllers/interview.controller");
-const upload = require("../middlewares/file.middleware");
 
 const interviewRouter = express.Router();
 
 /**
- * @route POST /api/interview/
- * @description generate new interview report on the basis of user self description,resume pdf and job description.
- * @access private
+ * @route   POST /api/interview/
+ * @desc    Generate interview report (resume PDF + job description)
+ * @access  Private
  */
 interviewRouter.post(
   "/",
-  authMiddleware.authUser,
+  authUser,
   upload.single("resume"),
+  handleMulterError,
   interviewController.generateInterViewReportController,
 );
 
 /**
- * @route GET /api/interview/report/:interviewId
- * @description get interview report by interviewId.
- * @access private
- */
-interviewRouter.get(
-  "/report/:interviewId",
-  authMiddleware.authUser,
-  interviewController.getInterviewReportByIdController,
-);
-
-/**
- * @route GET /api/interview/
- * @description get all interview reports of logged in user.
- * @access private
+ * @route   GET /api/interview/
+ * @desc    Get all reports for logged-in user (paginated)
+ * @access  Private
+ * @query   ?page=1&limit=20
  */
 interviewRouter.get(
   "/",
-  authMiddleware.authUser,
+  authUser,
   interviewController.getAllInterviewReportsController,
 );
 
 /**
- * @route GET /api/interview/resume/pdf
- * @description generate resume pdf on the basis of user self description, resume content and job description.
- * @access private
+ * @route   GET /api/interview/report/:interviewId
+ * @desc    Get a single report by ID
+ * @access  Private
+ */
+interviewRouter.get(
+  "/report/:interviewId",
+  authUser,
+  interviewController.getInterviewReportByIdController,
+);
+
+/**
+ * @route   POST /api/interview/resume/pdf/:interviewReportId
+ * @desc    Generate and download ATS resume PDF
+ * @access  Private
  */
 interviewRouter.post(
   "/resume/pdf/:interviewReportId",
-  authMiddleware.authUser,
+  authUser,
   interviewController.generateResumePdfController,
 );
 
 /**
- * @route DELETE /api/interview/:interviewId
- * @description Delete interview report
- * @access private
+ * @route   DELETE /api/interview/:interviewId
+ * @desc    Delete a report
+ * @access  Private
  */
 interviewRouter.delete(
   "/:interviewId",
-  authMiddleware.authUser,
+  authUser,
   interviewController.deleteInterviewReportController,
 );
 
