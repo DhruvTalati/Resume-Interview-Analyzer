@@ -11,13 +11,11 @@ const MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 // ── Schemas ───────────────────────────────────────────────────────────────────
 const interviewReportSchema = z.object({
   title: z.string().describe("Job title the interview report is generated for"),
-
   matchScore: z
     .number()
     .describe(
       "Score from 0–100 showing how well the candidate matches the job",
     ),
-
   technicalQuestions: z
     .array(
       z.object({
@@ -29,7 +27,6 @@ const interviewReportSchema = z.object({
       }),
     )
     .describe("Technical questions with intention and model answers"),
-
   behavioralQuestions: z
     .array(
       z.object({
@@ -39,7 +36,6 @@ const interviewReportSchema = z.object({
       }),
     )
     .describe("Behavioral questions with intention and model answers"),
-
   skillGaps: z
     .array(
       z.object({
@@ -50,7 +46,6 @@ const interviewReportSchema = z.object({
       }),
     )
     .describe("Skill gaps with severity"),
-
   preparationPlan: z
     .array(
       z.object({
@@ -111,11 +106,9 @@ async function callGeminiWithFallback({ schema, prompt, timeoutMs = 90000 }) {
 
         if (err.status === 503 || err.status === 429) {
           if (attempt === 2) break;
-
           let delay = (attempt + 1) * 8000;
           const retryMatch = err.message?.match(/retry in ([\d.]+)s/i);
           if (retryMatch) delay = Math.ceil(parseFloat(retryMatch[1])) * 1000;
-
           console.log(`[Gemini] Retrying in ${delay / 1000}s...`);
           await new Promise((r) => setTimeout(r, delay));
           continue;
@@ -132,27 +125,36 @@ async function callGeminiWithFallback({ schema, prompt, timeoutMs = 90000 }) {
   );
 }
 
-// ── Bulletproof normalization helpers ─────────────────────────────────────────
-// Gemini can return ANY shape inside an array, even with responseSchema set:
-// strings, numbers, booleans, null, partially-formed objects, JSON-as-string.
-// Every normalizer below filters out garbage instead of crashing on it.
+// ── HTML tag stripper ─────────────────────────────────────────────────────────
+// Gemini sometimes wraps plain text in <p>, <strong>, <em> etc even when
+// the schema asks for a plain string. Strip all tags and decode common entities.
+function stripHtml(str) {
+  if (typeof str !== "string") return str;
+  return str
+    .replace(/<[^>]*>/g, "") // remove all HTML tags
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ") // collapse whitespace
+    .trim();
+}
 
+// ── Bulletproof normalization helpers ─────────────────────────────────────────
 const isPlainObject = (v) =>
   v !== null && typeof v === "object" && !Array.isArray(v);
 
-// Attempt to parse a string as JSON; otherwise return it unchanged
 const tryParseJson = (v) => {
   if (typeof v !== "string") return v;
   try {
-    const parsed = JSON.parse(v);
-    return parsed;
+    return JSON.parse(v);
   } catch {
     return v;
   }
 };
 
-// Normalize an array of "question" items (technical/behavioral).
-// Drops any item that isn't a usable object or convertible string.
 function normalizeQuestions(arr, defaultIntention, defaultAnswer) {
   if (!Array.isArray(arr)) return [];
 
@@ -160,30 +162,32 @@ function normalizeQuestions(arr, defaultIntention, defaultAnswer) {
     .map(tryParseJson)
     .map((item) => {
       if (isPlainObject(item)) {
-        // Coerce all fields to strings defensively — Gemini sometimes
-        // nests objects or numbers inside fields too
         return {
-          question: typeof item.question === "string" ? item.question : null,
+          // FIX: stripHtml on every text field — Gemini wraps in <p> tags
+          question:
+            typeof item.question === "string" ? stripHtml(item.question) : null,
           intention:
             typeof item.intention === "string"
-              ? item.intention
+              ? stripHtml(item.intention)
               : defaultIntention,
-          answer: typeof item.answer === "string" ? item.answer : defaultAnswer,
+          answer:
+            typeof item.answer === "string"
+              ? stripHtml(item.answer)
+              : defaultAnswer,
         };
       }
       if (typeof item === "string" && item.trim().length > 5) {
         return {
-          question: item.trim(),
+          question: stripHtml(item.trim()),
           intention: defaultIntention,
           answer: defaultAnswer,
         };
       }
-      return null; // numbers, booleans, null, empty strings, malformed objects
+      return null;
     })
-    .filter((item) => item && item.question); // drop anything without a real question
+    .filter((item) => item && item.question);
 }
 
-// Normalize skill gaps array
 function normalizeSkillGaps(arr) {
   if (!Array.isArray(arr)) return [];
 
@@ -191,7 +195,9 @@ function normalizeSkillGaps(arr) {
     .map(tryParseJson)
     .map((item) => {
       if (isPlainObject(item)) {
-        const skill = typeof item.skill === "string" ? item.skill.trim() : null;
+        // FIX: stripHtml on skill text
+        const skill =
+          typeof item.skill === "string" ? stripHtml(item.skill) : null;
         const severity = ["low", "medium", "high"].includes(item.severity)
           ? item.severity
           : "medium";
@@ -201,65 +207,66 @@ function normalizeSkillGaps(arr) {
         const m = item.match(
           /skill:\s*(.*?),\s*severity:\s*(low|medium|high)/i,
         );
-        if (m) return { skill: m[1].trim(), severity: m[2].toLowerCase() };
+        if (m)
+          return {
+            skill: stripHtml(m[1].trim()),
+            severity: m[2].toLowerCase(),
+          };
         if (item.trim().length > 1)
-          return { skill: item.trim(), severity: "medium" };
+          return { skill: stripHtml(item.trim()), severity: "medium" };
       }
       return null;
     })
     .filter(Boolean);
 }
 
-// Normalize preparation plan array — this is the one that crashed.
-// Any item that isn't a valid {day, focus, tasks} object is dropped entirely.
 function normalizePreparationPlan(arr) {
   if (!Array.isArray(arr)) return [];
 
   const validItems = arr
     .map(tryParseJson)
     .map((item) => {
-      // Reject anything that isn't a plain object outright —
-      // this is exactly what crashed before: a bare number in the array
       if (!isPlainObject(item)) {
         if (typeof item === "string") {
           const dayM = item.match(/day:\s*(\d+)/i);
           const focusM = item.match(/focus:\s*([^,]+)/i);
           const tasksM = item.match(/tasks:\s*\[(.*)\]/i);
-          if (!dayM) return null; // can't recover without a day number
+          if (!dayM) return null;
           return {
             day: Number(dayM[1]),
-            focus: focusM ? focusM[1].trim() : "General preparation",
+            focus: focusM ? stripHtml(focusM[1].trim()) : "General preparation",
             tasks: tasksM
               ? tasksM[1]
                   .split(",")
-                  .map((t) => t.replace(/"/g, "").trim())
+                  .map((t) => stripHtml(t.replace(/"/g, "").trim()))
                   .filter(Boolean)
               : [],
           };
         }
-        return null; // numbers, booleans, null, arrays — silently dropped
+        return null;
       }
 
-      // It's an object — validate and coerce each field individually
       const day = Number.isInteger(item.day)
         ? item.day
         : typeof item.day === "string" && /^\d+$/.test(item.day)
           ? Number(item.day)
           : null;
 
-      if (!day || day < 1) return null; // no recoverable day number — drop this item
+      if (!day || day < 1) return null;
 
+      // FIX: stripHtml on focus text
       const focus =
         typeof item.focus === "string" && item.focus.trim()
-          ? item.focus.trim()
+          ? stripHtml(item.focus.trim())
           : "General preparation";
 
+      // FIX: stripHtml on each task string
       const tasks = Array.isArray(item.tasks)
         ? item.tasks
             .filter((t) => typeof t === "string" && t.trim())
-            .map((t) => t.trim())
+            .map((t) => stripHtml(t.trim()))
         : typeof item.tasks === "string"
-          ? [item.tasks.trim()]
+          ? [stripHtml(item.tasks.trim())]
           : [];
 
       return {
@@ -270,8 +277,6 @@ function normalizePreparationPlan(arr) {
     })
     .filter(Boolean);
 
-  // Re-number days sequentially in case some were dropped, so the plan
-  // still reads as "Day 1, Day 2, Day 3..." instead of having gaps
   return validItems
     .sort((a, b) => a.day - b.day)
     .map((item, idx) => ({ ...item, day: idx + 1 }));
@@ -363,11 +368,13 @@ INSTRUCTIONS — read carefully before generating:
    - day starts at 1 and increases sequentially. NEVER "Day 1" as a string — just the number 1.
    - This array MUST NOT be empty.
 
-CRITICAL FORMAT RULE — read this twice:
-Every single item inside technicalQuestions, behavioralQuestions, skillGaps, and 
-preparationPlan MUST be a JSON OBJECT with the exact fields specified above. 
-NEVER put a raw string, number, or boolean directly inside these arrays. 
-Every array element is always { ... } — never a bare value.
+CRITICAL FORMAT RULES — read these twice:
+- Every single item inside technicalQuestions, behavioralQuestions, skillGaps, and 
+  preparationPlan MUST be a JSON OBJECT. NEVER put a raw string, number, or boolean directly 
+  inside these arrays.
+- ALL string values (question, intention, answer, focus, tasks, skill) MUST be plain text only.
+  NEVER wrap any text in HTML tags like <p>, <strong>, <em>, <li> or any other HTML.
+  Return clean plain text strings with no markup whatsoever.
 
 OUTPUT RULES:
 - Return ONLY valid JSON matching the schema.
@@ -382,7 +389,6 @@ OUTPUT RULES:
 
   let parsed = JSON.parse(response.text);
 
-  // ── Bulletproof normalization — drops malformed items instead of crashing ──
   parsed.technicalQuestions = normalizeQuestions(
     parsed.technicalQuestions,
     "Technical Assessment",
@@ -396,17 +402,13 @@ OUTPUT RULES:
   );
 
   parsed.skillGaps = normalizeSkillGaps(parsed.skillGaps);
-
   parsed.preparationPlan = normalizePreparationPlan(parsed.preparationPlan);
 
-  // Defensive defaults for top-level fields
   if (
     typeof parsed.matchScore !== "number" ||
     Number.isNaN(parsed.matchScore)
   ) {
-    console.warn(
-      "[AI] matchScore missing from Gemini response — defaulting to 50",
-    );
+    console.warn("[AI] matchScore missing — defaulting to 50");
     parsed.matchScore = 50;
   }
   parsed.matchScore = Math.min(100, Math.max(0, Math.round(parsed.matchScore)));
@@ -417,11 +419,10 @@ OUTPUT RULES:
     !parsed.title.trim()
   ) {
     parsed.title = "Interview Report";
+  } else {
+    parsed.title = stripHtml(parsed.title);
   }
 
-  // Only reject as hollow if EVERYTHING is empty after normalization —
-  // a partially malformed response (like the preparationPlan[1] number bug)
-  // now survives because the bad item was filtered out, not the whole request
   const isHollow =
     parsed.technicalQuestions.length === 0 &&
     parsed.behavioralQuestions.length === 0 &&
@@ -433,8 +434,6 @@ OUTPUT RULES:
     );
   }
 
-  // If preparationPlan is empty but other sections aren't, inject one
-  // minimal fallback day rather than failing the whole report
   if (parsed.preparationPlan.length === 0) {
     parsed.preparationPlan = [
       {
@@ -555,12 +554,9 @@ OUTPUT FORMAT — strictly follow:
     });
   } catch (aiErr) {
     console.error("[Resume PDF] AI generation failed:", aiErr.message);
-    const fallbackHtml = buildFallbackResume({
-      resume,
-      selfDescription,
-      jobDescription,
-    });
-    return generatePdfFromHtml(fallbackHtml);
+    return generatePdfFromHtml(
+      buildFallbackResume({ resume, selfDescription, jobDescription }),
+    );
   }
 
   let jsonContent;
@@ -588,7 +584,7 @@ OUTPUT FORMAT — strictly follow:
   return generatePdfFromHtml(jsonContent.html);
 }
 
-// ── Fallback resume (plain, readable, never crashes) ─────────────────────────
+// ── Fallback resume ───────────────────────────────────────────────────────────
 function buildFallbackResume({ resume, selfDescription, jobDescription }) {
   const escape = (str) =>
     String(str || "")
@@ -609,25 +605,8 @@ function buildFallbackResume({ resume, selfDescription, jobDescription }) {
 </head>
 <body>
   <h1>Resume</h1>
-
-  ${
-    selfDescription
-      ? `
-  <h2>Professional Summary</h2>
-  <p>${escape(selfDescription)}</p>
-  `
-      : ""
-  }
-
-  ${
-    resume
-      ? `
-  <h2>Experience &amp; Background</h2>
-  <p>${escape(resume)}</p>
-  `
-      : ""
-  }
-
+  ${selfDescription ? `<h2>Professional Summary</h2><p>${escape(selfDescription)}</p>` : ""}
+  ${resume ? `<h2>Experience &amp; Background</h2><p>${escape(resume)}</p>` : ""}
   <h2>Target Role</h2>
   <p>${escape(jobDescription)}</p>
 </body>

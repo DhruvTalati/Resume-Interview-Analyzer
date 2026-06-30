@@ -7,32 +7,32 @@ const morgan = require("morgan");
 
 const app = express();
 
-// ── Security headers ────────────────────────────────────────────────────────
+// FIX: trust proxy — required on Render/Heroku/Vercel so express-rate-limit
+// can correctly read the real client IP from X-Forwarded-For instead of
+// throwing ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+app.set("trust proxy", 1);
+
+// ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet());
 
-// ── Request logger (dev: colorful, prod: combined) ──────────────────────────
+// ── Request logger ────────────────────────────────────────────────────────────
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// ── CORS ─────────────────────────────────────────────────────────────────────
+// ── CORS ──────────────────────────────────────────────────────────────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-  : true; // allow all in dev
+  : true;
 
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-  }),
-);
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
-// ── Body parsers ─────────────────────────────────────────────────────────────
+// ── Body parsers ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
-// ── Global rate limiter (all routes) ─────────────────────────────────────────
+// ── Global rate limiter ───────────────────────────────────────────────────────
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
@@ -43,10 +43,10 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-// ── AI route rate limiter (stricter — Gemini is expensive) ───────────────────
+// ── AI route rate limiter ─────────────────────────────────────────────────────
 const aiLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // max 20 AI generations per hour per IP
+  windowMs: 60 * 60 * 1000,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -56,15 +56,13 @@ const aiLimiter = rateLimit({
   },
 });
 
-// ── Increase timeout for AI routes only ──────────────────────────────────────
+// ── Timeout for AI routes ─────────────────────────────────────────────────────
 app.use("/api/interview", (req, res, next) => {
-  if (req.method === "POST") {
-    res.setTimeout(180000); // 3 minutes for AI calls
-  }
+  if (req.method === "POST") res.setTimeout(180000);
   next();
 });
 
-// ── Health check ─────────────────────────────────────────────────────────────
+// ── Health check ──────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -81,23 +79,23 @@ const interviewRouter = require("./routes/interview.routes");
 app.use("/api/auth", authRouter);
 app.use("/api/interview", aiLimiter, interviewRouter);
 
-// ── 404 handler ───────────────────────────────────────────────────────────────
+// ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.method} ${req.originalUrl} not found.`,
-  });
+  res
+    .status(404)
+    .json({
+      success: false,
+      message: `Route ${req.method} ${req.originalUrl} not found.`,
+    });
 });
 
-// ── Global error handler ─────────────────────────────────────────────────────
+// ── Global error handler ──────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   const status = err.status || err.statusCode || 500;
   const isDev = process.env.NODE_ENV !== "production";
-
   console.error(`[ERROR] ${req.method} ${req.originalUrl} →`, err.message);
   if (isDev) console.error(err.stack);
-
   res.status(status).json({
     success: false,
     message: err.message || "Internal server error.",
