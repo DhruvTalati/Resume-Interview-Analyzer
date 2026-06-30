@@ -25,7 +25,10 @@ const Profile = () => {
         const { data } = await api.get("/api/auth/get-me");
         setUser(data.user);
         const r = await api.get("/api/interview");
-        setReports(r.data.reports || []);
+
+        console.log(r.data);
+
+        setReports(r.data.interviewReports || []);
       } catch (err) {
         console.error(err);
       }
@@ -34,7 +37,7 @@ const Profile = () => {
   }, []);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(user._id);
+    navigator.clipboard.writeText(user.id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -137,7 +140,7 @@ const Profile = () => {
                       { day: "numeric", month: "long", year: "numeric" },
                     ),
                   },
-                  { icon: "🆔", label: "User ID", value: user._id, copy: true },
+                  { icon: "🆔", label: "User ID", value: user.id, copy: true },
                 ].map((item) => (
                   <div key={item.label} className="pf-info__row">
                     <span className="pf-info__label">
