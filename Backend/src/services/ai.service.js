@@ -6,7 +6,6 @@ const puppeteer = require("puppeteer");
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
 
 // ── Model fallback chain ──────────────────────────────────────────────────────
-// If a model hits quota or overload, the next one is tried automatically
 const MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
@@ -103,17 +102,15 @@ async function callGeminiWithFallback({ schema, prompt, timeoutMs = 90000 }) {
           `         Status: ${err.status}  Message: ${err.message}`,
         );
 
-        // Daily/minute quota fully exhausted — skip to next model immediately
         if (err.status === 429 && err.message?.includes("limit: 0")) {
           console.log(
             `[Gemini] Quota exhausted for ${model} — switching model`,
           );
-          break; // inner loop → try next model
+          break;
         }
 
-        // Temporary overload or rate-limit — retry same model after delay
         if (err.status === 503 || err.status === 429) {
-          if (attempt === 2) break; // give up on this model
+          if (attempt === 2) break;
 
           let delay = (attempt + 1) * 8000;
           const retryMatch = err.message?.match(/retry in ([\d.]+)s/i);
@@ -124,7 +121,6 @@ async function callGeminiWithFallback({ schema, prompt, timeoutMs = 90000 }) {
           continue;
         }
 
-        // Any other error (bad API key, schema mismatch, etc.) — fail fast
         throw err;
       }
     }
@@ -136,31 +132,152 @@ async function callGeminiWithFallback({ schema, prompt, timeoutMs = 90000 }) {
   );
 }
 
-// ── Normalize helpers ─────────────────────────────────────────────────────────
-const parseIfString = (v) => {
+// ── Bulletproof normalization helpers ─────────────────────────────────────────
+// Gemini can return ANY shape inside an array, even with responseSchema set:
+// strings, numbers, booleans, null, partially-formed objects, JSON-as-string.
+// Every normalizer below filters out garbage instead of crashing on it.
+
+const isPlainObject = (v) =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
+
+// Attempt to parse a string as JSON; otherwise return it unchanged
+const tryParseJson = (v) => {
   if (typeof v !== "string") return v;
   try {
-    return JSON.parse(v);
+    const parsed = JSON.parse(v);
+    return parsed;
   } catch {
     return v;
   }
 };
 
-const toQuestion = (defaultIntention, defaultAnswer) => (item) => {
-  if (typeof item === "string") {
-    return {
-      question: item,
-      intention: defaultIntention,
-      answer: defaultAnswer,
-    };
-  }
-  return item;
-};
+// Normalize an array of "question" items (technical/behavioral).
+// Drops any item that isn't a usable object or convertible string.
+function normalizeQuestions(arr, defaultIntention, defaultAnswer) {
+  if (!Array.isArray(arr)) return [];
+
+  return arr
+    .map(tryParseJson)
+    .map((item) => {
+      if (isPlainObject(item)) {
+        // Coerce all fields to strings defensively — Gemini sometimes
+        // nests objects or numbers inside fields too
+        return {
+          question: typeof item.question === "string" ? item.question : null,
+          intention:
+            typeof item.intention === "string"
+              ? item.intention
+              : defaultIntention,
+          answer: typeof item.answer === "string" ? item.answer : defaultAnswer,
+        };
+      }
+      if (typeof item === "string" && item.trim().length > 5) {
+        return {
+          question: item.trim(),
+          intention: defaultIntention,
+          answer: defaultAnswer,
+        };
+      }
+      return null; // numbers, booleans, null, empty strings, malformed objects
+    })
+    .filter((item) => item && item.question); // drop anything without a real question
+}
+
+// Normalize skill gaps array
+function normalizeSkillGaps(arr) {
+  if (!Array.isArray(arr)) return [];
+
+  return arr
+    .map(tryParseJson)
+    .map((item) => {
+      if (isPlainObject(item)) {
+        const skill = typeof item.skill === "string" ? item.skill.trim() : null;
+        const severity = ["low", "medium", "high"].includes(item.severity)
+          ? item.severity
+          : "medium";
+        return skill ? { skill, severity } : null;
+      }
+      if (typeof item === "string") {
+        const m = item.match(
+          /skill:\s*(.*?),\s*severity:\s*(low|medium|high)/i,
+        );
+        if (m) return { skill: m[1].trim(), severity: m[2].toLowerCase() };
+        if (item.trim().length > 1)
+          return { skill: item.trim(), severity: "medium" };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+// Normalize preparation plan array — this is the one that crashed.
+// Any item that isn't a valid {day, focus, tasks} object is dropped entirely.
+function normalizePreparationPlan(arr) {
+  if (!Array.isArray(arr)) return [];
+
+  const validItems = arr
+    .map(tryParseJson)
+    .map((item) => {
+      // Reject anything that isn't a plain object outright —
+      // this is exactly what crashed before: a bare number in the array
+      if (!isPlainObject(item)) {
+        if (typeof item === "string") {
+          const dayM = item.match(/day:\s*(\d+)/i);
+          const focusM = item.match(/focus:\s*([^,]+)/i);
+          const tasksM = item.match(/tasks:\s*\[(.*)\]/i);
+          if (!dayM) return null; // can't recover without a day number
+          return {
+            day: Number(dayM[1]),
+            focus: focusM ? focusM[1].trim() : "General preparation",
+            tasks: tasksM
+              ? tasksM[1]
+                  .split(",")
+                  .map((t) => t.replace(/"/g, "").trim())
+                  .filter(Boolean)
+              : [],
+          };
+        }
+        return null; // numbers, booleans, null, arrays — silently dropped
+      }
+
+      // It's an object — validate and coerce each field individually
+      const day = Number.isInteger(item.day)
+        ? item.day
+        : typeof item.day === "string" && /^\d+$/.test(item.day)
+          ? Number(item.day)
+          : null;
+
+      if (!day || day < 1) return null; // no recoverable day number — drop this item
+
+      const focus =
+        typeof item.focus === "string" && item.focus.trim()
+          ? item.focus.trim()
+          : "General preparation";
+
+      const tasks = Array.isArray(item.tasks)
+        ? item.tasks
+            .filter((t) => typeof t === "string" && t.trim())
+            .map((t) => t.trim())
+        : typeof item.tasks === "string"
+          ? [item.tasks.trim()]
+          : [];
+
+      return {
+        day,
+        focus,
+        tasks: tasks.length ? tasks : ["Review and practice key concepts."],
+      };
+    })
+    .filter(Boolean);
+
+  // Re-number days sequentially in case some were dropped, so the plan
+  // still reads as "Day 1, Day 2, Day 3..." instead of having gaps
+  return validItems
+    .sort((a, b) => a.day - b.day)
+    .map((item, idx) => ({ ...item, day: idx + 1 }));
+}
 
 // ── generateInterviewReport (public) ──────────────────────────────────────────
-// Thin wrapper that retries the ENTIRE generation up to 2 times if the
-// underlying model returns a hollow/empty report (no questions, no plan).
-// This handles cases where a fallback model "succeeds" but returns junk.
 async function generateInterviewReport({
   resume,
   selfDescription,
@@ -186,7 +303,7 @@ async function generateInterviewReport({
         `[AI] Outer attempt ${outerAttempt}/${MAX_OUTER_ATTEMPTS} failed: ${err.message}`,
       );
       if (outerAttempt < MAX_OUTER_ATTEMPTS) {
-        await new Promise((r) => setTimeout(r, 3000)); // brief pause before retrying everything
+        await new Promise((r) => setTimeout(r, 3000));
       }
     }
   }
@@ -221,52 +338,41 @@ INSTRUCTIONS — read carefully before generating:
 
 1. TITLE
    - Extract the exact job title from the job description.
-   - Example: "Senior Frontend Engineer", "Data Analyst", "Product Manager"
 
 2. MATCH SCORE (0–100)
    - Compare the candidate's skills, experience, and background against the job requirements.
-   - Be accurate and realistic — not inflated.
    - 90–100: near-perfect fit  |  70–89: strong fit  |  50–69: moderate fit  |  <50: weak fit
 
 3. TECHNICAL QUESTIONS (minimum 8, maximum 15)
    - Tailor every question to the SPECIFIC technologies and skills in this job description.
-   - Cover: core concepts, problem-solving, system design, debugging, best practices.
-   - Each question must have:
-     • question:  The exact interview question as the interviewer would ask it.
-     • intention: What competency or mindset the interviewer is testing.
-     • answer:    A detailed model answer. Include: key points to mention, concrete 
-                  examples, common pitfalls to avoid, and how to structure the response.
-   - This array MUST NOT be empty. Generate at least 8 questions no matter what.
+   - Each item MUST be an object with exactly these three string fields: question, intention, answer.
+   - This array MUST NOT be empty.
 
 4. BEHAVIORAL QUESTIONS (minimum 5, maximum 10)
-   - Based on the company culture signals in the job description.
-   - Cover: teamwork, conflict resolution, leadership, failure & learning, ownership.
-   - Each answer must follow the STAR method (Situation, Task, Action, Result) and 
-     give a worked example the candidate can adapt.
-   - This array MUST NOT be empty. Generate at least 5 questions no matter what.
+   - Each item MUST be an object with exactly these three string fields: question, intention, answer.
+   - Use the STAR method in every answer.
+   - This array MUST NOT be empty.
 
 5. SKILL GAPS
-   - List skills explicitly required by the job description that the candidate lacks or 
-     where evidence is weak.
-   - severity = "high" if the skill is in the job title or listed as required.
-   - severity = "medium" if listed as preferred or mentioned multiple times.
-   - severity = "low" if mentioned once or as a nice-to-have.
-   - If there are genuinely no gaps, return an empty array — but only as a last resort.
+   - Each item MUST be an object with exactly: skill (string), severity ("low"|"medium"|"high").
+   - If there are genuinely no gaps, return an empty array.
 
 6. PREPARATION PLAN (7–14 days)
-   - Build a realistic, day-by-day plan to close the skill gaps and prepare for the interview.
-   - day: integer only (1, 2, 3 …) — NEVER "Day 1" or "First Day".
-   - Each day must have: a clear focus topic and 3–5 specific, actionable tasks 
-     (e.g. "Complete LeetCode problems 1–10 on arrays", "Watch system design video on 
-     YouTube: Gaurav Sen", "Build a small React app with useContext").
-   - This array MUST NOT be empty. Generate at least 7 days no matter what.
+   - Each item MUST be an object with exactly: day (integer, NOT a string), focus (string), 
+     tasks (array of strings).
+   - day starts at 1 and increases sequentially. NEVER "Day 1" as a string — just the number 1.
+   - This array MUST NOT be empty.
 
-OUTPUT RULES — strictly follow these:
+CRITICAL FORMAT RULE — read this twice:
+Every single item inside technicalQuestions, behavioralQuestions, skillGaps, and 
+preparationPlan MUST be a JSON OBJECT with the exact fields specified above. 
+NEVER put a raw string, number, or boolean directly inside these arrays. 
+Every array element is always { ... } — never a bare value.
+
+OUTPUT RULES:
 - Return ONLY valid JSON matching the schema.
 - Do NOT add markdown, code fences, comments, or any text outside the JSON.
 - Do NOT use generic filler questions. Every question must be specific to this role.
-- The "day" field MUST be an integer. Never a string.
-- NEVER return empty arrays for technicalQuestions, behavioralQuestions, or preparationPlan.
 `;
 
   const response = await callGeminiWithFallback({
@@ -276,62 +382,24 @@ OUTPUT RULES — strictly follow these:
 
   let parsed = JSON.parse(response.text);
 
-  // Normalize — handle cases where Gemini returns strings instead of objects
-  parsed.technicalQuestions = (parsed.technicalQuestions || [])
-    .map(
-      toQuestion(
-        "Technical Assessment",
-        "Provide a structured answer with real examples.",
-      ),
-    )
-    .map(parseIfString);
+  // ── Bulletproof normalization — drops malformed items instead of crashing ──
+  parsed.technicalQuestions = normalizeQuestions(
+    parsed.technicalQuestions,
+    "Technical Assessment",
+    "Provide a structured answer with real examples.",
+  );
 
-  parsed.behavioralQuestions = (parsed.behavioralQuestions || [])
-    .map(
-      toQuestion(
-        "Behavioral Assessment",
-        "Use the STAR method: Situation, Task, Action, Result.",
-      ),
-    )
-    .map(parseIfString);
+  parsed.behavioralQuestions = normalizeQuestions(
+    parsed.behavioralQuestions,
+    "Behavioral Assessment",
+    "Use the STAR method: Situation, Task, Action, Result.",
+  );
 
-  parsed.skillGaps = (parsed.skillGaps || [])
-    .map((item) => {
-      if (typeof item === "string") {
-        const m = item.match(
-          /skill:\s*(.*?),\s*severity:\s*(low|medium|high)/i,
-        );
-        return {
-          skill: m ? m[1].trim() : item,
-          severity: m ? m[2].toLowerCase() : "medium",
-        };
-      }
-      return item;
-    })
-    .map(parseIfString);
+  parsed.skillGaps = normalizeSkillGaps(parsed.skillGaps);
 
-  parsed.preparationPlan = (parsed.preparationPlan || [])
-    .map((item) => {
-      if (typeof item === "string") {
-        const dayM = item.match(/day:\s*(\d+)/i);
-        const focusM = item.match(/focus:\s*([^,]+)/i);
-        const tasksM = item.match(/tasks:\s*\[(.*)\]/i);
-        return {
-          day: dayM ? Number(dayM[1]) : 1,
-          focus: focusM ? focusM[1].trim() : "",
-          tasks: tasksM
-            ? tasksM[1]
-                .split(",")
-                .map((t) => t.replace(/"/g, "").trim())
-                .filter(Boolean)
-            : [],
-        };
-      }
-      return item;
-    })
-    .map(parseIfString);
+  parsed.preparationPlan = normalizePreparationPlan(parsed.preparationPlan);
 
-  // Defensive defaults — Gemini occasionally omits fields even with responseSchema set
+  // Defensive defaults for top-level fields
   if (
     typeof parsed.matchScore !== "number" ||
     Number.isNaN(parsed.matchScore)
@@ -351,9 +419,9 @@ OUTPUT RULES — strictly follow these:
     parsed.title = "Interview Report";
   }
 
-  // Reject hollow responses — if the model returned almost nothing useful,
-  // throw so the OUTER retry wrapper (generateInterviewReport) tries again
-  // from scratch, instead of silently saving an empty report to the database.
+  // Only reject as hollow if EVERYTHING is empty after normalization —
+  // a partially malformed response (like the preparationPlan[1] number bug)
+  // now survives because the bad item was filtered out, not the whole request
   const isHollow =
     parsed.technicalQuestions.length === 0 &&
     parsed.behavioralQuestions.length === 0 &&
@@ -363,6 +431,21 @@ OUTPUT RULES — strictly follow these:
     throw new Error(
       "Gemini returned an empty report (no questions or plan). Retrying.",
     );
+  }
+
+  // If preparationPlan is empty but other sections aren't, inject one
+  // minimal fallback day rather than failing the whole report
+  if (parsed.preparationPlan.length === 0) {
+    parsed.preparationPlan = [
+      {
+        day: 1,
+        focus: "General interview preparation",
+        tasks: [
+          "Review the job description and align your experience to it.",
+          "Practice the technical and behavioral questions above.",
+        ],
+      },
+    ];
   }
 
   return interviewReportSchema.parse(parsed);
