@@ -113,29 +113,6 @@ Generate:
 * Resume Download
 * Historical Analysis
 
----
-
-# 📸 Screenshots
-
-## Home Page
-
-<img width="1138" height="850" alt="Screenshot 2026-06-19 174307" src="https://github.com/user-attachments/assets/a089c9ce-fc9b-4ea9-ac1e-c07a8ee6e7e5" />
-
-
----
-
-## Questions that Can Recruiters ask
-
-<img width="1611" height="832" alt="image" src="https://github.com/user-attachments/assets/3d32fd1a-b195-46c6-8452-87d6d0111db5" />
-
-
-
----
-
-## Road Map Plans
-
-<img width="1867" height="832" alt="image" src="https://github.com/user-attachments/assets/90322ac1-9554-493f-b780-dec1fe76c367" />
-
 
 ---
 
