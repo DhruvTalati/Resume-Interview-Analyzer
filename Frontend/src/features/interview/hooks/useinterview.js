@@ -117,16 +117,16 @@ export const useInterview = () => {
     async (interviewReportId) => {
       clearError();
       try {
-        const blob = await generateResumePdf({ interviewReportId });
+        const buffer = await generateResumePdf(interviewReportId);
 
-        // Validate we actually got a PDF blob
-        if (!blob || blob.size === 0) {
+        if (!buffer || buffer.byteLength === 0) {
           throw new Error("Received empty PDF response.");
         }
 
         const url = window.URL.createObjectURL(
-          new Blob([blob], { type: "application/pdf" }),
+          new Blob([buffer], { type: "application/pdf" }),
         );
+
         const link = document.createElement("a");
         link.href = url;
         link.setAttribute("download", `resume_${interviewReportId}.pdf`);
