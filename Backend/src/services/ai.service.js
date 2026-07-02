@@ -680,11 +680,15 @@ async function generatePdfFromHtml(htmlContent) {
   console.log("[Puppeteer] Launching Chrome...");
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath:
+      process.env.PUPPETEER_EXECUTABLE_PATH ||
+      "/opt/render/.cache/puppeteer/chrome/linux-149.0.7827.22/chrome-linux64/chrome",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
+      "--single-process",
     ],
   });
   let page;
